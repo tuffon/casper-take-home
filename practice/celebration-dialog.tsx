@@ -66,8 +66,8 @@ export function CelebrationDialog({ completedDay, onClose }: CelebrationDialogPr
 
         <div className="mt-6 grid grid-cols-3 gap-2 rounded-field bg-parchment p-4">
           <DayStat value={completedDay.currentStreak} label="day streak" highlight />
-          <DayStat value={completedDay.wordCount} label="words" />
-          <DayStat value={completedDay.minutesWritten} label="minutes" />
+          <DayStat value={completedDay.wordsToday} label="words today" />
+          <DayStat value={completedDay.minutesToday} label="minutes today" />
         </div>
 
         {completedDay.isPersonalBest && (

@@ -8,9 +8,10 @@ your own goal, and build a streak.
 
 - **Setup:** after signing up, choose what you usually write and what counts
   as a day of practice: a word goal, a time goal, both, or just showing up.
-- **Today:** the day's prompt (7 per form, rotating daily, with "another
-  prompt"), a writing area with live word count and active typing time, and
-  progress toward your goals.
+- **Today:** a tab per writing form, each with its own prompt (7 per form,
+  rotating daily, with "another prompt") and its own text. Goals count
+  everything written today across the tabs. Unsaved writing is kept in the
+  browser until you save it. Finishing the day shows a small celebration.
 - **History:** current and longest streak, totals, and every past entry.
 
 **Live app:** https://casper-take-home-rho.vercel.app
@@ -34,8 +35,9 @@ Supabase (Auth + Postgres) · Vercel
 
 **Database setup:** run the SQL files in `supabase/migrations/` in order
 (paste them into the Supabase SQL Editor, or use `supabase db push`). They
-create `writer_profiles` and `entries`, both with row-level security so each
-writer can only read and change their own rows.
+create `writer_profiles` (setup answers), `entries` (one piece of writing per
+form per day) and `completed_days` (days the goals were met), all with
+row-level security so each writer can only read and change their own rows.
 
 **Tests:** `npm test` runs the unit tests for the streak, goal, date, and
 prompt logic (`practice/practice-logic.test.ts`).
@@ -70,8 +72,10 @@ prompt logic (`practice/practice-logic.test.ts`).
 | `practice/goals.ts`, `practice/streak.ts` | What counts as a finished day; streak rules |
 | `practice/writing-forms.ts` | The writing forms and their 7 prompts each |
 | `practice/dates.ts`, `practice/today.ts` | Calendar-day helpers; the writer's local "today" |
-| `practice/writing-editor.tsx` | Writing area, word count, typing timer, save |
-| `practice/entries.ts`, `practice/writer-profile.ts` | Database reads |
+| `practice/writing-workspace.tsx` | Form tabs, writing area, typing timer, day totals, save |
+| `practice/local-drafts.ts` | Keeps unsaved writing in the browser |
+| `practice/celebration-dialog.tsx` | The "day complete" pop-up |
+| `practice/entries.ts`, `practice/completed-days.ts`, `practice/writer-profile.ts` | Database reads and writes |
 | `supabase/migrations/` | Tables and row-level security policies |
 | `app/globals.css` | Design tokens (colors, type, radii) and shared styles |
 
@@ -91,8 +95,13 @@ prompt logic (`practice/practice-logic.test.ts`).
 - **"Today" is the writer's today.** The server runs in UTC, so the browser
   reports its timezone in a cookie and the server uses it to decide which
   day an entry belongs to. The server, not the browser, sets the entry date.
-- **A finished day is decided when it's saved** (`goal_met` on the entry), so
-  changing your goals later doesn't rewrite your past streak.
+- **Goals apply to the whole day,** however the writing is split between
+  forms. The first save that meets them adds a row to `completed_days` (and
+  triggers the pop-up, once). Finished days stay finished, so changing your
+  goals later doesn't rewrite your past streak.
+- **Unsaved writing lives in the browser** (`localStorage`), per writer and
+  per day, so leaving the page loses nothing. Drafts from earlier days are
+  erased, since those days can no longer be saved.
 - **Time counts only while typing.** The clock pauses after a minute without
   typing. It's measured in the browser and trusted, since it's the writer's
   own practice log.

@@ -3,16 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSignedInUser } from "@/auth/current-user";
 import { AppNav } from "@/components/app-nav";
+import { listCompletedDates } from "@/practice/completed-days";
 import { formatLongDate, isCalendarDate } from "@/practice/dates";
-import { getEntryForDate } from "@/practice/entries";
+import { listEntriesForDate } from "@/practice/entries";
 import { getWritersToday } from "@/practice/today";
 import { WRITING_FORMS } from "@/practice/writing-forms";
 
 export const metadata: Metadata = { title: "Entry" };
 
-// One day's entry, e.g. /history/2026-10-19. Read-only; today's entry links
-// back to the editor.
-export default async function EntryPage({ params }: PageProps<"/history/[date]">) {
+// Everything written on one day, e.g. /history/2026-10-19. Read-only; for
+// today there's a link back to the editor.
+export default async function DayPage({ params }: PageProps<"/history/[date]">) {
   const user = await requireSignedInUser();
   const { date } = await params;
 
@@ -20,9 +21,13 @@ export default async function EntryPage({ params }: PageProps<"/history/[date]">
     notFound();
   }
 
-  // Row level security means another writer's entry simply isn't found.
-  const [entry, today] = await Promise.all([getEntryForDate(user.id, date), getWritersToday()]);
-  if (!entry) {
+  // Row level security means another writer's pieces simply aren't found.
+  const [pieces, completedDates, today] = await Promise.all([
+    listEntriesForDate(user.id, date),
+    listCompletedDates(user.id),
+    getWritersToday(),
+  ]);
+  if (pieces.length === 0) {
     notFound();
   }
 
@@ -34,26 +39,33 @@ export default async function EntryPage({ params }: PageProps<"/history/[date]">
         ‹ All entries
       </Link>
 
-      <h1 className="display-title mt-2">
-        {formatLongDate(entry.entryDate)}
-      </h1>
-      <p className="mt-2 text-ink-secondary">
-        {WRITING_FORMS[entry.writingForm].label} · {entry.wordCount} words ·{" "}
-        {Math.floor(entry.writingSeconds / 60)} min
-        {entry.goalMet && <span className="font-semibold text-success"> · Goal met</span>}
-      </p>
+      <h1 className="display-title mt-2">{formatLongDate(date)}</h1>
+      {completedDates.includes(date) && (
+        <p className="mt-2 font-semibold text-success">Goal met</p>
+      )}
 
-      <section className="mt-6 rounded-card bg-white/60 p-6">
-        <p className="text-sm text-ink-secondary">Prompt</p>
-        <p className="mt-1 font-semibold">{entry.prompt}</p>
-      </section>
+      {pieces.map((piece) => (
+        <section key={piece.writingForm} className="mt-8">
+          <h2 className="font-serif text-[21px] font-semibold">
+            {WRITING_FORMS[piece.writingForm].label}
+          </h2>
+          <p className="text-sm text-ink-secondary">
+            {piece.wordCount} words · {Math.floor(piece.writingSeconds / 60)} min
+          </p>
 
-      <article className="mt-4 rounded-card border border-black/8 bg-white p-6 leading-relaxed whitespace-pre-wrap">
-        {entry.body || "No writing saved."}
-      </article>
+          <div className="mt-3 rounded-card bg-white/60 p-5">
+            <p className="text-sm text-ink-secondary">Prompt</p>
+            <p className="mt-1 font-semibold">{piece.prompt}</p>
+          </div>
 
-      {entry.entryDate === today && (
-        <Link href="/today" className="button-primary mt-6">
+          <article className="mt-3 rounded-card border border-black/8 bg-white p-6 leading-relaxed whitespace-pre-wrap">
+            {piece.body || "No writing saved."}
+          </article>
+        </section>
+      ))}
+
+      {date === today && (
+        <Link href="/today" className="button-primary mt-8">
           Keep writing
         </Link>
       )}

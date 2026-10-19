@@ -5,10 +5,10 @@ import {
   isCalendarDate,
   isValidTimezone,
 } from "./dates";
-import { countWords, getGoalType, isDayComplete } from "./goals";
+import { countWords, getDayTotals, getGoalType, isDayComplete } from "./goals";
 import { getCelebrationMessage } from "./celebration";
 import { calculateStreaks } from "./streak";
-import { WRITING_FORMS, getPromptForDay, isKnownPrompt } from "./writing-forms";
+import { WRITING_FORMS, getNextPrompt, getPromptForDay, isKnownPrompt } from "./writing-forms";
 
 describe("dates", () => {
   it("uses the writer's timezone to decide what day it is", () => {
@@ -58,6 +58,13 @@ describe("goals", () => {
     expect(isDayComplete(noGoals, 0, 600)).toBe(false);
   });
 
+  it("adds up every piece written in a day", () => {
+    const lyrics = { wordCount: 12, writingSeconds: 40 };
+    const essay = { wordCount: 10, writingSeconds: 30 };
+    expect(getDayTotals([lyrics, essay])).toEqual({ wordCount: 22, writingSeconds: 70 });
+    expect(getDayTotals([])).toEqual({ wordCount: 0, writingSeconds: 0 });
+  });
+
   it("maps saved goals back to the setup answer", () => {
     expect(getGoalType({ dailyWordGoal: 200, dailyMinuteGoal: 10 })).toBe("both");
     expect(getGoalType({ dailyWordGoal: null, dailyMinuteGoal: 10 })).toBe("time");
@@ -98,8 +105,10 @@ describe("prompts", () => {
     expect(getPromptForDay("lyrics", addDays("2026-10-19", 7))).toBe(promptsForAWeek[0]);
   });
 
-  it("gives a different prompt when the writer asks for another", () => {
-    expect(getPromptForDay("essay", "2026-10-19", 1)).not.toBe(getPromptForDay("essay", "2026-10-19"));
+  it("steps to the next prompt for “Another prompt”, wrapping around", () => {
+    const essayPrompts = WRITING_FORMS.essay.prompts;
+    expect(getNextPrompt("essay", essayPrompts[0])).toBe(essayPrompts[1]);
+    expect(getNextPrompt("essay", essayPrompts[6])).toBe(essayPrompts[0]);
   });
 
   it("has exactly seven prompts for every form", () => {

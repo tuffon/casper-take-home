@@ -81,13 +81,18 @@ export function isWritingForm(value: unknown): value is WritingForm {
 
 /**
  * The prompt for a form on a given day. Each day moves one step through the
- * form's list, so the prompts repeat weekly. `skip` moves further along when
- * the writer asks for "another prompt".
+ * form's list, so the prompts repeat weekly.
  */
-export function getPromptForDay(form: WritingForm, date: string, skip = 0): string {
+export function getPromptForDay(form: WritingForm, date: string): string {
   const prompts = WRITING_FORMS[form].prompts;
-  const index = (daysSinceEpoch(date) + skip) % prompts.length;
-  return prompts[index];
+  return prompts[daysSinceEpoch(date) % prompts.length];
+}
+
+/** The prompt after `currentPrompt` in the form's list, for "Another prompt". Wraps around. */
+export function getNextPrompt(form: WritingForm, currentPrompt: string): string {
+  const prompts: readonly string[] = WRITING_FORMS[form].prompts;
+  const currentIndex = prompts.indexOf(currentPrompt); // -1 if not found, so we start at the first
+  return prompts[(currentIndex + 1) % prompts.length];
 }
 
 /** True if the text is one of this form's prompts (used to check form submissions). */

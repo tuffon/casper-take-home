@@ -7,8 +7,15 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSignedInUser } from "@/auth/current-user";
-import { getEntryForDate, listCompletedDates } from "@/practice/entries";
-import { countWords, isDayComplete, isGoalType } from "@/practice/goals";
+import { listCompletedDates, recordCompletedDay } from "@/practice/completed-days";
+import { listEntriesForDate } from "@/practice/entries";
+import {
+  countWords,
+  getDayTotals,
+  isDayComplete,
+  isGoalType,
+  type PracticeGoals,
+} from "@/practice/goals";
 import { calculateStreaks } from "@/practice/streak";
 import { getWritersToday } from "@/practice/today";
 import { getWriterProfile } from "@/practice/writer-profile";
@@ -106,8 +113,8 @@ export async function skipSetup() {
 export type CompletedDay = {
   currentStreak: number;
   isPersonalBest: boolean;
-  wordCount: number;
-  minutesWritten: number;
+  wordsToday: number; // across every piece written today
+  minutesToday: number;
 };
 
 export type SaveEntryState =
@@ -144,17 +151,13 @@ export async function saveTodaysEntry(
     return { status: "error", message: "That’s too long to save in one entry." };
   }
 
-  // Writing time is measured in the browser (writing-editor.tsx). It's the
+  // Writing time is measured in the browser (writing-workspace.tsx). It's the
   // writer's own practice log, so we trust it, but keep it within sane limits.
   const writingSeconds = Math.min(
     readWholeNumber(formData.get("writingSeconds")) ?? 0,
     MAXIMUM_WRITING_SECONDS,
   );
-  const wordCount = countWords(body);
-  const goalMet = isDayComplete(profile, wordCount, writingSeconds);
-
   const today = await getWritersToday(); // decided by the server, not the browser
-  const entryBeforeSave = await getEntryForDate(user.id, today);
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("entries").upsert(
@@ -164,13 +167,11 @@ export async function saveTodaysEntry(
       writing_form: writingForm,
       prompt,
       body,
-      word_count: wordCount,
+      word_count: countWords(body),
       writing_seconds: writingSeconds,
-      // Stored with the entry so that changing goals later doesn't rewrite past days.
-      goal_met: goalMet,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "user_id,entry_date" }, // one entry per writer per day
+    { onConflict: "user_id,entry_date,writing_form" }, // one piece per form per day
   );
 
   if (error) {
@@ -179,24 +180,41 @@ export async function saveTodaysEntry(
 
   // Re-render the page so the streak reflects this save.
   revalidatePath("/today");
-  const savedAt = new Date().toISOString();
 
-  // Celebrate only the save that finishes the day, not every save after it.
-  const finishedTheDayNow = goalMet && !entryBeforeSave?.goalMet;
-  if (!finishedTheDayNow) {
-    return { status: "saved", savedAt, completedDay: null };
-  }
-
-  const streak = calculateStreaks(await listCompletedDates(user.id), today);
   return {
     status: "saved",
-    savedAt,
-    completedDay: {
-      currentStreak: streak.current,
-      isPersonalBest: streak.current > 1 && streak.current === streak.longest,
-      wordCount,
-      minutesWritten: Math.floor(writingSeconds / 60),
-    },
+    savedAt: new Date().toISOString(),
+    completedDay: await checkForFinishedDay(user.id, today, profile),
+  };
+}
+
+/**
+ * After a save: if everything written today, added up, now meets the
+ * writer's goals, record the day as finished. Returns the pop-up details
+ * only the first time a day is finished, so the celebration never repeats.
+ * Once finished, a day stays finished, even if goals change later.
+ */
+async function checkForFinishedDay(
+  userId: string,
+  today: string,
+  goals: PracticeGoals,
+): Promise<CompletedDay | null> {
+  const totals = getDayTotals(await listEntriesForDate(userId, today));
+  if (!isDayComplete(goals, totals.wordCount, totals.writingSeconds)) {
+    return null;
+  }
+
+  const isFirstTimeToday = await recordCompletedDay(userId, today);
+  if (!isFirstTimeToday) {
+    return null;
+  }
+
+  const streak = calculateStreaks(await listCompletedDates(userId), today);
+  return {
+    currentStreak: streak.current,
+    isPersonalBest: streak.current > 1 && streak.current === streak.longest,
+    wordsToday: totals.wordCount,
+    minutesToday: Math.floor(totals.writingSeconds / 60),
   };
 }
 

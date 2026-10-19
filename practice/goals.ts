@@ -38,6 +38,22 @@ export function countWords(text: string): number {
 }
 
 /**
+ * Adds up a day's pieces of writing. Goals apply to the day's total,
+ * however it's split between forms.
+ */
+export function getDayTotals(
+  pieces: { wordCount: number; writingSeconds: number }[],
+): { wordCount: number; writingSeconds: number } {
+  let wordCount = 0;
+  let writingSeconds = 0;
+  for (const piece of pieces) {
+    wordCount += piece.wordCount;
+    writingSeconds += piece.writingSeconds;
+  }
+  return { wordCount, writingSeconds };
+}
+
+/**
  * True once the day's writing meets every goal the writer chose.
  * With no goals at all ("just showing up"), any writing counts.
  */
