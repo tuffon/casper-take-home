@@ -57,6 +57,21 @@ your own goal, and build a streak.
 - History and streaks load every row at once. That's fine at this size, but
   long histories would need pagination and streaks calculated in SQL.
 
+### How I prioritized
+
+1. **A working, deployed app first.** Sign-up, sign-in and sign-out were live
+   on Vercel and Supabase, and tested, before any product work, so there was
+   always something ready to deliver.
+2. **Then the core product:** the daily loop of a prompt, writing toward a
+   goal, saving and building a streak, since that's what the app is for.
+3. **Then features that make it feel complete,** like the setup questions
+   and the pop-up when a goal is reached.
+4. **In the last part of the two hours, I smoothed out the friction I hit
+   using it myself:** separate text for each kind of writing, drafts kept when
+   leaving the page, and a goal and streak for each kind of writing instead of
+   one total for the day. That's why the later migrations rework earlier
+   tables.
+
 ### How to run
 
 - **Live:** open https://casper-take-home-rho.vercel.app and create an
