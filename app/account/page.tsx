@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireSignedInUser } from "@/auth/current-user";
 import { SignOutButton } from "@/auth/sign-out-button";
+import { AppNav } from "@/components/app-nav";
 
 export const metadata: Metadata = { title: "Your account" };
 
@@ -10,23 +12,30 @@ export default async function AccountPage() {
   const user = await requireSignedInUser();
 
   return (
-    <div className="card">
-      <h1 className="page-title">Your account</h1>
-      <p className="mt-2 text-ink-secondary">You’re signed in.</p>
+    <div className="w-full max-w-md">
+      <AppNav currentPage="account" />
 
-      <dl className="mt-8 space-y-5">
-        <div>
-          <dt className="text-ink-secondary">Email</dt>
-          <dd className="mt-0.5 font-semibold">{user.email}</dd>
-        </div>
-        <div>
-          <dt className="text-ink-secondary">User ID</dt>
-          <dd className="mt-0.5 font-mono text-sm break-all">{user.id}</dd>
-        </div>
-      </dl>
+      <div className="card mt-8">
+        <h1 className="page-title">Your account</h1>
+        <p className="mt-2 text-ink-secondary">You’re signed in.</p>
 
-      <div className="mt-8">
-        <SignOutButton />
+        <dl className="mt-8 space-y-5">
+          <div>
+            <dt className="text-ink-secondary">Email</dt>
+            <dd className="mt-0.5 font-semibold">{user.email}</dd>
+          </div>
+          <div>
+            <dt className="text-ink-secondary">User ID</dt>
+            <dd className="mt-0.5 font-mono text-sm break-all">{user.id}</dd>
+          </div>
+        </dl>
+
+        <div className="mt-8 flex items-center gap-4">
+          <SignOutButton />
+          <Link href="/setup" className="text-link">
+            Change your writing goals
+          </Link>
+        </div>
       </div>
     </div>
   );

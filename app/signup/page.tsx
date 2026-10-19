@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Create an account" };
 export default async function SignUpPage() {
   // Someone already signed in has no reason to see this form.
   if (await getSignedInUser()) {
-    redirect("/account");
+    redirect("/today");
   }
 
   return (

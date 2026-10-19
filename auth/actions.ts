@@ -46,7 +46,8 @@ export async function signUp(
     };
   }
 
-  redirect("/account");
+  // New writers answer the setup questions first.
+  redirect("/setup");
 }
 
 export async function signIn(
@@ -66,7 +67,8 @@ export async function signIn(
     return { email, errorMessage: describeAuthError(error.code, error.message) };
   }
 
-  redirect("/account");
+  // /today sends anyone who hasn't finished setup to /setup.
+  redirect("/today");
 }
 
 export async function signOut() {

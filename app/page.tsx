@@ -17,15 +17,15 @@ export default async function HomePage() {
             You’re signed in as {user.email}.
           </p>
           <div className="mt-10 flex justify-center">
-            <Link href="/account" className="button-primary">
-              Go to your account
+            <Link href="/today" className="button-primary">
+              Open today’s page
             </Link>
           </div>
         </>
       ) : (
         <>
           <p className="mt-4 text-[21px] text-ink-secondary">
-            Create an account or sign in to continue.
+            A daily writing practice. One prompt, one page, every day.
           </p>
           <div className="mt-10 flex justify-center gap-4">
             <Link href="/signup" className="button-primary">

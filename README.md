@@ -1,8 +1,15 @@
 # Casper Take-Home
 
-Engineering take-home project. The product idea is still being chosen; this
-first milestone is the foundation: email + password accounts, a protected
-page, and a live deployment.
+A daily writing practice app. Every day you get a prompt for the kind of
+writing you do (freewriting, lyrics, poetry, essays, stories), write toward
+your own goal, and build a streak.
+
+- **Setup:** after signing up, choose what you usually write and what counts
+  as a day of practice: a word goal, a time goal, both, or just showing up.
+- **Today:** the day's prompt (7 per form, rotating daily, with "another
+  prompt"), a writing area with live word count and active typing time, and
+  progress toward your goals.
+- **History:** current and longest streak, totals, and every past entry.
 
 **Live app:** https://casper-take-home-rho.vercel.app
 
@@ -23,9 +30,13 @@ Supabase (Auth + Postgres) · Vercel
    publishable key (**Project Settings → API Keys**).
 4. Run `npm run dev` and open http://localhost:3000.
 
-**Database setup:** none yet. Supabase Auth manages its own tables. App tables
-added later will live in `supabase/migrations/` with row-level security on,
-scoped to the signed-in owner.
+**Database setup:** run the SQL files in `supabase/migrations/` in order
+(paste them into the Supabase SQL Editor, or use `supabase db push`). They
+create `writer_profiles` and `entries`, both with row-level security so each
+writer can only read and change their own rows.
+
+**Tests:** `npm test` runs the unit tests for the streak, goal, date, and
+prompt logic (`practice/practice-logic.test.ts`).
 
 ## How sign-in works
 
@@ -52,6 +63,14 @@ scoped to the signed-in owner.
 | `auth/auth-form.tsx` | Email + password form with errors and loading state |
 | `auth/validation.ts` | Sign-up rules shared by the form and the server |
 | `proxy.ts`, `lib/supabase/` | Supabase clients and session refresh |
+| `app/setup`, `app/today`, `app/history` | Setup questions, the daily page, past entries |
+| `practice/actions.ts` | Server Actions: save setup answers, save today's entry |
+| `practice/goals.ts`, `practice/streak.ts` | What counts as a finished day; streak rules |
+| `practice/writing-forms.ts` | The writing forms and their 7 prompts each |
+| `practice/dates.ts`, `practice/today.ts` | Calendar-day helpers; the writer's local "today" |
+| `practice/writing-editor.tsx` | Writing area, word count, typing timer, save |
+| `practice/entries.ts`, `practice/writer-profile.ts` | Database reads |
+| `supabase/migrations/` | Tables and row-level security policies |
 | `app/globals.css` | Design tokens (colors, type, radii) and shared styles |
 
 ## Decisions
@@ -67,5 +86,15 @@ scoped to the signed-in owner.
   not only in `proxy.ts` and never just by hiding UI.
 - **No secret keys.** The app uses only Supabase's publishable key, which is
   designed to be public. Data will be protected by row-level security.
+- **"Today" is the writer's today.** The server runs in UTC, so the browser
+  reports its timezone in a cookie and the server uses it to decide which
+  day an entry belongs to. The server, not the browser, sets the entry date.
+- **A finished day is decided when it's saved** (`goal_met` on the entry), so
+  changing your goals later doesn't rewrite your past streak.
+- **Time counts only while typing.** The clock pauses after a minute without
+  typing. It's measured in the browser and trusted, since it's the writer's
+  own practice log.
+- **Streaks forgive the current day:** the streak only breaks once a day ends
+  without a finished entry.
 - **Next.js Cache Components are off** to keep the code simple: pages that
   read the session render fresh on every request.
