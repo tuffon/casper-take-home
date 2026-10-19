@@ -2,27 +2,35 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireSignedInUser } from "@/auth/current-user";
 import { AppNav } from "@/components/app-nav";
-import { listCompletedDates } from "@/practice/completed-days";
 import { formatShortDate } from "@/practice/dates";
 import { listEntries, type Entry } from "@/practice/entries";
-import { calculateStreaks } from "@/practice/streak";
+import { listGoalCompletions } from "@/practice/goal-completions";
+import { calculateAllStreaks } from "@/practice/streak";
 import { getWritersToday } from "@/practice/today";
+import { getPracticedForms, getWriterProfile } from "@/practice/writer-profile";
 import { WRITING_FORMS } from "@/practice/writing-forms";
 
 export const metadata: Metadata = { title: "History" };
 
-// Every day the writer has written, newest first, with their overall stats.
+// Every day the writer has written, newest first, with their streaks.
 export default async function HistoryPage() {
   const user = await requireSignedInUser();
-  const [entries, completedDates, today] = await Promise.all([
+  const [entries, completions, profile, today] = await Promise.all([
     listEntries(user.id),
-    listCompletedDates(user.id),
+    listGoalCompletions(user.id),
+    getWriterProfile(user.id),
     getWritersToday(),
   ]);
 
-  const streak = calculateStreaks(completedDates, today);
+  const streaks = calculateAllStreaks(completions, today);
+  const practicedForms = profile ? getPracticedForms(profile) : [];
   const days = groupByDay(entries);
   const totalWords = entries.reduce((sum, entry) => sum + entry.wordCount, 0);
+
+  // e.g. "lyrics:2026-10-19" for every goal reached, to mark pieces below.
+  const reachedGoals = new Set(
+    completions.map((completion) => `${completion.writingForm}:${completion.completedOn}`),
+  );
 
   return (
     <div className="w-full max-w-2xl">
@@ -31,11 +39,23 @@ export default async function HistoryPage() {
       <h1 className="display-title mt-10">History</h1>
 
       <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Current streak" value={streak.current} highlight />
-        <Stat label="Longest streak" value={streak.longest} />
+        <Stat label="Overall streak" value={streaks.overall.current} highlight />
+        <Stat label="Longest overall" value={streaks.overall.longest} />
         <Stat label="Days written" value={days.length} />
         <Stat label="Total words" value={totalWords.toLocaleString("en-US")} />
       </dl>
+
+      {practicedForms.length > 0 && (
+        <ul aria-label="Streak for each kind of writing" className="mt-4 flex flex-wrap gap-2">
+          {practicedForms.map((form) => (
+            <li key={form} className="streak-chip">
+              {WRITING_FORMS[form].label} ·{" "}
+              <span className="font-semibold text-spark">{streaks.byForm[form].current}</span>
+              -day streak
+            </li>
+          ))}
+        </ul>
+      )}
 
       {days.length === 0 ? (
         <p className="mt-10 text-ink-secondary">
@@ -52,17 +72,15 @@ export default async function HistoryPage() {
                 href={`/history/${day.date}`}
                 className="block rounded-card border border-black/8 bg-white p-5 transition-colors hover:border-hairline"
               >
-                <div className="flex items-center justify-between gap-4">
-                  <span className="font-semibold">{formatShortDate(day.date)}</span>
-                  {completedDates.includes(day.date) && (
-                    <span className="text-sm font-semibold text-success">Goal met</span>
-                  )}
-                </div>
+                <span className="font-semibold">{formatShortDate(day.date)}</span>
                 <ul className="mt-2 space-y-1 text-sm text-ink-secondary">
                   {day.pieces.map((piece) => (
                     <li key={piece.writingForm}>
                       {WRITING_FORMS[piece.writingForm].label} · {piece.wordCount} words ·{" "}
                       {Math.floor(piece.writingSeconds / 60)} min
+                      {reachedGoals.has(`${piece.writingForm}:${day.date}`) && (
+                        <span className="font-semibold text-success"> · Goal met</span>
+                      )}
                     </li>
                   ))}
                 </ul>

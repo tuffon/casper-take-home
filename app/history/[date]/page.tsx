@@ -3,9 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSignedInUser } from "@/auth/current-user";
 import { AppNav } from "@/components/app-nav";
-import { listCompletedDates } from "@/practice/completed-days";
 import { formatLongDate, isCalendarDate } from "@/practice/dates";
 import { listEntriesForDate } from "@/practice/entries";
+import { listGoalCompletions } from "@/practice/goal-completions";
 import { getWritersToday } from "@/practice/today";
 import { WRITING_FORMS } from "@/practice/writing-forms";
 
@@ -22,14 +22,18 @@ export default async function DayPage({ params }: PageProps<"/history/[date]">) 
   }
 
   // Row level security means another writer's pieces simply aren't found.
-  const [pieces, completedDates, today] = await Promise.all([
+  const [pieces, completions, today] = await Promise.all([
     listEntriesForDate(user.id, date),
-    listCompletedDates(user.id),
+    listGoalCompletions(user.id),
     getWritersToday(),
   ]);
   if (pieces.length === 0) {
     notFound();
   }
+
+  const formsWithGoalReached = completions
+    .filter((completion) => completion.completedOn === date)
+    .map((completion) => completion.writingForm);
 
   return (
     <div className="w-full max-w-2xl">
@@ -40,9 +44,6 @@ export default async function DayPage({ params }: PageProps<"/history/[date]">) 
       </Link>
 
       <h1 className="display-title mt-2">{formatLongDate(date)}</h1>
-      {completedDates.includes(date) && (
-        <p className="mt-2 font-semibold text-success">Goal met</p>
-      )}
 
       {pieces.map((piece) => (
         <section key={piece.writingForm} className="mt-8">
@@ -51,6 +52,9 @@ export default async function DayPage({ params }: PageProps<"/history/[date]">) 
           </h2>
           <p className="text-sm text-ink-secondary">
             {piece.wordCount} words · {Math.floor(piece.writingSeconds / 60)} min
+            {formsWithGoalReached.includes(piece.writingForm) && (
+              <span className="font-semibold text-success"> · Goal met</span>
+            )}
           </p>
 
           <div className="mt-3 rounded-card bg-white/60 p-5">

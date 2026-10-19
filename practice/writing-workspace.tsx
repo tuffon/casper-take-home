@@ -8,15 +8,16 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { saveTodaysEntry, type CompletedDay, type SaveEntryState } from "@/practice/actions";
+import { saveTodaysEntry, type ReachedGoal, type SaveEntryState } from "@/practice/actions";
 import { CelebrationDialog } from "@/practice/celebration-dialog";
-import { countWords, getDayTotals, isDayComplete, type PracticeGoals } from "@/practice/goals";
+import { countWords, describeGoal, isGoalMet, type FormGoal } from "@/practice/goals";
 import {
   deleteOldDrafts,
   loadDrafts,
   storeDrafts,
   type LocalDrafts,
 } from "@/practice/local-drafts";
+import type { StreakSummary } from "@/practice/streak";
 import {
   WRITING_FORMS,
   WRITING_FORM_NAMES,
@@ -28,6 +29,8 @@ import {
 // Time only counts while the writer is actually typing: if nothing has been
 // typed for this long, the clock pauses. Leaving the page open adds nothing.
 const PAUSE_AFTER_MILLISECONDS = 60 * 1000;
+
+const NO_GOAL: FormGoal = { dailyWordGoal: null, dailyMinuteGoal: null };
 
 // One piece of writing per form, as it is in the browser right now.
 type Piece = {
@@ -51,25 +54,28 @@ export type SavedPiece = {
 type WritingWorkspaceProps = {
   userId: string; // drafts kept in the browser are stored per writer
   today: string;
-  goals: PracticeGoals;
-  startingForm: WritingForm; // the writer's usual form
+  practicedForms: WritingForm[]; // the forms picked in setup, one tab each
+  goals: Partial<Record<WritingForm, FormGoal>>;
   savedPieces: SavedPiece[];
-  isTodayFinished: boolean; // refreshed by the server after every save
+  // These two are refreshed by the server after every save:
+  formStreaks: Record<WritingForm, StreakSummary>;
+  goalsReachedToday: WritingForm[];
 };
 
-// Today's writing: a tab per writing form, each with its own prompt and its
-// own text. Goals count everything written today, across all the tabs.
+// Today's writing: a tab per writing form the writer practices, each with its
+// own prompt, text, goal and streak.
 export function WritingWorkspace({
   userId,
   today,
+  practicedForms,
   goals,
-  startingForm,
   savedPieces,
-  isTodayFinished,
+  formStreaks,
+  goalsReachedToday,
 }: WritingWorkspaceProps) {
-  const [activeForm, setActiveForm] = useState(startingForm);
+  const [activeForm, setActiveForm] = useState(practicedForms[0]);
   const [pieces, setPieces] = useState(() => createPieces(today, savedPieces));
-  const [completedDay, setCompletedDay] = useState<CompletedDay | null>(null);
+  const [reachedGoal, setReachedGoal] = useState<ReachedGoal | null>(null);
   const clock = useWritingClock(activeForm, setPieces);
   useDraftsInBrowser(userId, today, pieces, setPieces);
 
@@ -83,7 +89,7 @@ export function WritingWorkspace({
           ...current,
           [savedForm]: { ...current[savedForm], savedBody, lastSavedAt: result.savedAt },
         }));
-        setCompletedDay(result.completedDay); // non-null only when this save finished the day
+        setReachedGoal(result.reachedGoal); // non-null only the first time a goal is reached today
       }
       return result;
     },
@@ -92,15 +98,10 @@ export function WritingWorkspace({
 
   const piece = pieces[activeForm];
   const formLabel = WRITING_FORMS[activeForm].label;
+  const goal = goals[activeForm] ?? NO_GOAL;
+  const streak = formStreaks[activeForm];
+  const wordCount = countWords(piece.body);
   const hasUnsavedChanges = (form: WritingForm) => pieces[form].body !== pieces[form].savedBody;
-
-  const totals = getDayTotals(
-    WRITING_FORM_NAMES.map((form) => ({
-      wordCount: countWords(pieces[form].body),
-      writingSeconds: pieces[form].writingSeconds,
-    })),
-  );
-  const goalsReached = isDayComplete(goals, totals.wordCount, totals.writingSeconds);
 
   function updateActivePiece(changes: Partial<Piece>) {
     setPieces((current) => ({
@@ -118,7 +119,7 @@ export function WritingWorkspace({
     <div>
       {/* One button per writing form. A dot marks unsaved changes. */}
       <div role="group" aria-label="Writing form" className="segmented mt-8">
-        {WRITING_FORM_NAMES.map((form) => (
+        {practicedForms.map((form) => (
           <button
             key={form}
             type="button"
@@ -138,7 +139,13 @@ export function WritingWorkspace({
       </div>
 
       <section className="mt-6 rounded-card border border-black/8 bg-white p-6">
-        <p className="text-sm text-ink-secondary">{formLabel} prompt</p>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 text-sm text-ink-secondary">
+          <p>{formLabel} prompt</p>
+          <p>
+            <span className="font-semibold text-spark">{streak.current}</span>-day{" "}
+            {formLabel.toLowerCase()} streak · best {streak.longest}
+          </p>
+        </div>
         <p id="todays-prompt" className="mt-2 text-[21px] leading-snug font-semibold">
           {piece.prompt}
         </p>
@@ -172,30 +179,23 @@ export function WritingWorkspace({
           aria-describedby="todays-prompt"
           className="writing-area"
         />
-        <p className="mt-2 text-sm text-ink-secondary">
-          {countWords(piece.body)} words in this piece
-        </p>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <GoalProgress label="Words" current={wordCount} goal={goal.dailyWordGoal} unit="words" />
           <GoalProgress
-            label="Words today"
-            current={totals.wordCount}
-            goal={goals.dailyWordGoal}
-            unit="words"
-          />
-          <GoalProgress
-            label="Time today"
-            current={Math.floor(totals.writingSeconds / 60)}
-            goal={goals.dailyMinuteGoal}
+            label="Time writing"
+            current={Math.floor(piece.writingSeconds / 60)}
+            goal={goal.dailyMinuteGoal}
             unit="min"
           />
         </div>
 
         <p className="mt-4 text-sm" aria-live="polite">
-          <DayStatus
-            isTodayFinished={isTodayFinished}
-            goalsReached={goalsReached}
-            hasGoals={goals.dailyWordGoal !== null || goals.dailyMinuteGoal !== null}
+          <GoalStatus
+            formLabel={formLabel}
+            goal={goal}
+            isReachedToday={goalsReachedToday.includes(activeForm)}
+            isMetNow={isGoalMet(goal, wordCount, piece.writingSeconds)}
           />
         </p>
 
@@ -212,8 +212,8 @@ export function WritingWorkspace({
         </div>
       </form>
 
-      {completedDay && (
-        <CelebrationDialog completedDay={completedDay} onClose={() => setCompletedDay(null)} />
+      {reachedGoal && (
+        <CelebrationDialog reachedGoal={reachedGoal} onClose={() => setReachedGoal(null)} />
       )}
     </div>
   );
@@ -402,31 +402,27 @@ function GoalProgress({ label, current, goal, unit }: GoalProgressProps) {
   );
 }
 
-type DayStatusProps = {
-  isTodayFinished: boolean;
-  goalsReached: boolean;
-  hasGoals: boolean;
+type GoalStatusProps = {
+  formLabel: string;
+  goal: FormGoal;
+  isReachedToday: boolean; // already recorded by the server
+  isMetNow: boolean; // met by the text on screen, maybe not saved yet
 };
 
-function DayStatus({ isTodayFinished, goalsReached, hasGoals }: DayStatusProps) {
-  if (isTodayFinished) {
+function GoalStatus({ formLabel, goal, isReachedToday, isMetNow }: GoalStatusProps) {
+  if (isReachedToday) {
     return (
       <span className="font-semibold text-success">
-        Today’s practice is complete. Write more if you like.
+        {formLabel} goal reached today. Write more if you like.
       </span>
     );
   }
-  if (goalsReached) {
-    return (
-      <span className="font-semibold text-success">Goal reached. Save to finish the day.</span>
-    );
-  }
-  if (!hasGoals) {
-    return <span className="text-ink-secondary">Any writing counts today.</span>;
+  if (isMetNow) {
+    return <span className="font-semibold text-success">Goal reached. Save to lock it in.</span>;
   }
   return (
     <span className="text-ink-secondary">
-      Keep going to reach today’s goal. Every tab counts.
+      Today’s {formLabel.toLowerCase()} goal: {describeGoal(goal)}.
     </span>
   );
 }

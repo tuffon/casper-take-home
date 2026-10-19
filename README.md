@@ -6,13 +6,15 @@ A daily writing practice app. Every day you get a prompt for the kind of
 writing you do (freewriting, lyrics, poetry, essays, stories), write toward
 your own goal, and build a streak.
 
-- **Setup:** after signing up, choose what you usually write and what counts
-  as a day of practice: a word goal, a time goal, both, or just showing up.
-- **Today:** a tab per writing form, each with its own prompt (7 per form,
-  rotating daily, with "another prompt") and its own text. Goals count
-  everything written today across the tabs. Unsaved writing is kept in the
-  browser until you save it. Finishing the day shows a small celebration.
-- **History:** current and longest streak, totals, and every past entry.
+- **Setup:** after signing up, tick the kinds of writing you practice. Each
+  gets its own daily goal: a number of words, minutes, both, or neither (then
+  any writing counts). Setup can be skipped; it's offered again at each sign-in.
+- **Today:** a tab per kind of writing you practice, each with its own prompt
+  (7 per form, rotating daily, with "another prompt"), text, goal and streak.
+  Reaching a goal shows a small celebration, once per form per day. Unsaved
+  writing is kept in the browser until you save it.
+- **History:** the overall streak (days you reached at least one goal), a
+  streak per form, totals, and every past piece.
 
 **Live app:** https://casper-take-home-rho.vercel.app
 
@@ -35,8 +37,9 @@ Supabase (Auth + Postgres) · Vercel
 
 **Database setup:** run the SQL files in `supabase/migrations/` in order
 (paste them into the Supabase SQL Editor, or use `supabase db push`). They
-create `writer_profiles` (setup answers), `entries` (one piece of writing per
-form per day) and `completed_days` (days the goals were met), all with
+create `writer_profiles` (setup finished or skipped), `writing_goals` (one
+goal per form a writer practices), `entries` (one piece of writing per form
+per day) and `goal_completions` (each form's goal reached on a day), all with
 row-level security so each writer can only read and change their own rows.
 
 **Tests:** `npm test` runs the unit tests for the streak, goal, date, and
@@ -75,7 +78,7 @@ prompt logic (`practice/practice-logic.test.ts`).
 | `practice/writing-workspace.tsx` | Form tabs, writing area, typing timer, day totals, save |
 | `practice/local-drafts.ts` | Keeps unsaved writing in the browser |
 | `practice/celebration-dialog.tsx` | The "day complete" pop-up |
-| `practice/entries.ts`, `practice/completed-days.ts`, `practice/writer-profile.ts` | Database reads and writes |
+| `practice/entries.ts`, `practice/goal-completions.ts`, `practice/writer-profile.ts` | Database reads and writes |
 | `supabase/migrations/` | Tables and row-level security policies |
 | `app/globals.css` | Design tokens (colors, type, radii) and shared styles |
 
@@ -95,10 +98,12 @@ prompt logic (`practice/practice-logic.test.ts`).
 - **"Today" is the writer's today.** The server runs in UTC, so the browser
   reports its timezone in a cookie and the server uses it to decide which
   day an entry belongs to. The server, not the browser, sets the entry date.
-- **Goals apply to the whole day,** however the writing is split between
-  forms. The first save that meets them adds a row to `completed_days` (and
-  triggers the pop-up, once). Finished days stay finished, so changing your
-  goals later doesn't rewrite your past streak.
+- **Goals and streaks are per form.** 120 words of a story never counts
+  toward a 250-word story goal, whatever else was written that day. The first
+  save that meets a form's goal adds a row to `goal_completions` (and shows
+  the pop-up, once). Each form's streak counts its own completions; the
+  overall streak counts days with at least one. Reached goals stay reached,
+  so changing goals later doesn't rewrite past streaks.
 - **Unsaved writing lives in the browser** (`localStorage`), per writer and
   per day, so leaving the page loses nothing. Drafts from earlier days are
   erased, since those days can no longer be saved.

@@ -1,28 +1,31 @@
 import type { Metadata } from "next";
 import { requireSignedInUser } from "@/auth/current-user";
 import { AppNav } from "@/components/app-nav";
-import { listCompletedDates } from "@/practice/completed-days";
 import { formatLongDate } from "@/practice/dates";
 import { listEntriesForDate } from "@/practice/entries";
-import { calculateStreaks } from "@/practice/streak";
+import { listGoalCompletions } from "@/practice/goal-completions";
+import { calculateAllStreaks } from "@/practice/streak";
 import { getWritersToday } from "@/practice/today";
-import { requireWriterProfile } from "@/practice/writer-profile";
+import { getPracticedForms, requireWriterProfile } from "@/practice/writer-profile";
 import { WritingWorkspace } from "@/practice/writing-workspace";
 
 export const metadata: Metadata = { title: "Today" };
 
-// The daily writing page: today's date and streak, then the writing
-// workspace with a tab for each writing form.
+// The daily writing page: today's date and overall streak, then a tab for
+// each writing form the writer practices.
 export default async function TodayPage() {
   const user = await requireSignedInUser();
   const profile = await requireWriterProfile(user.id);
   const today = await getWritersToday();
 
-  const [todaysPieces, completedDates] = await Promise.all([
+  const [todaysPieces, completions] = await Promise.all([
     listEntriesForDate(user.id, today),
-    listCompletedDates(user.id),
+    listGoalCompletions(user.id),
   ]);
-  const streak = calculateStreaks(completedDates, today);
+  const streaks = calculateAllStreaks(completions, today);
+  const goalsReachedToday = completions
+    .filter((completion) => completion.completedOn === today)
+    .map((completion) => completion.writingForm);
 
   return (
     <div className="w-full max-w-2xl">
@@ -35,10 +38,10 @@ export default async function TodayPage() {
         </div>
         <div className="text-right">
           <p className="text-[28px] leading-tight font-semibold text-spark">
-            {streak.current} {streak.current === 1 ? "day" : "days"}
+            {streaks.overall.current} {streaks.overall.current === 1 ? "day" : "days"}
           </p>
           <p className="text-sm text-ink-secondary">
-            current streak · best {streak.longest}
+            overall streak · best {streaks.overall.longest}
           </p>
         </div>
       </div>
@@ -46,13 +49,11 @@ export default async function TodayPage() {
       <WritingWorkspace
         userId={user.id}
         today={today}
-        goals={{
-          dailyWordGoal: profile.dailyWordGoal,
-          dailyMinuteGoal: profile.dailyMinuteGoal,
-        }}
-        startingForm={profile.usualWritingForm}
+        practicedForms={getPracticedForms(profile)}
+        goals={profile.goals}
         savedPieces={todaysPieces}
-        isTodayFinished={completedDates.includes(today)}
+        formStreaks={streaks.byForm}
+        goalsReachedToday={goalsReachedToday}
       />
     </div>
   );

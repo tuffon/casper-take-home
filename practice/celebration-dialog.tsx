@@ -3,17 +3,20 @@
 import confetti from "canvas-confetti";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import type { CompletedDay } from "@/practice/actions";
+import type { ReachedGoal } from "@/practice/actions";
 import { getCelebrationMessage } from "@/practice/celebration";
+import { WRITING_FORMS } from "@/practice/writing-forms";
 
 type CelebrationDialogProps = {
-  completedDay: CompletedDay;
+  reachedGoal: ReachedGoal;
   onClose: () => void;
 };
 
-// The pop-up shown once, right after the save that finishes the day.
+// The pop-up shown once per writing form per day, right after the save that
+// first reaches that form's goal.
 // It's a native <dialog>, so the browser handles keyboard focus and Escape.
-export function CelebrationDialog({ completedDay, onClose }: CelebrationDialogProps) {
+export function CelebrationDialog({ reachedGoal, onClose }: CelebrationDialogProps) {
+  const formLabel = WRITING_FORMS[reachedGoal.writingForm].label;
   const dialogRef = useRef<HTMLDialogElement>(null);
   const confettiCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -58,19 +61,20 @@ export function CelebrationDialog({ completedDay, onClose }: CelebrationDialogPr
         <CheckMark />
 
         <h2 id="celebration-title" className="mt-4 font-serif text-[32px] leading-tight font-semibold">
-          Day complete
+          {formLabel} goal reached
         </h2>
         <p className="mt-2 text-ink-secondary">
-          {getCelebrationMessage(completedDay.currentStreak)}
+          {getCelebrationMessage(reachedGoal.formStreak)}
         </p>
 
-        <div className="mt-6 grid grid-cols-3 gap-2 rounded-field bg-parchment p-4">
-          <DayStat value={completedDay.currentStreak} label="day streak" highlight />
-          <DayStat value={completedDay.wordsToday} label="words today" />
-          <DayStat value={completedDay.minutesToday} label="minutes today" />
+        <div className="mt-6 grid grid-cols-2 gap-y-4 rounded-field bg-parchment p-4">
+          <DayStat value={reachedGoal.formStreak} label={`day ${formLabel.toLowerCase()} streak`} highlight />
+          <DayStat value={reachedGoal.overallStreak} label="day overall streak" />
+          <DayStat value={reachedGoal.wordCount} label="words" />
+          <DayStat value={reachedGoal.minutesWritten} label="minutes" />
         </div>
 
-        {completedDay.isPersonalBest && (
+        {reachedGoal.isPersonalBest && (
           <p className="mt-4 text-sm font-semibold text-spark">New personal best</p>
         )}
 

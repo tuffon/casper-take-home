@@ -1,35 +1,11 @@
-// What counts as a finished day of practice. Each writer picks their goals
-// during setup (app/setup): a word goal, a time goal, both, or neither.
+// Each writing form the writer practices has its own daily goal, chosen in
+// setup (app/setup): a number of words, a number of minutes, both, or
+// neither, in which case any writing counts.
 
-export type PracticeGoals = {
+export type FormGoal = {
   dailyWordGoal: number | null; // null means "no word goal"
   dailyMinuteGoal: number | null; // null means "no time goal"
 };
-
-// The four answers to "What should count as a day of practice?"
-export const GOAL_TYPES = {
-  words: { label: "A word count", description: "Write a set number of words." },
-  time: { label: "Time spent writing", description: "Write for a set number of minutes." },
-  both: { label: "Both", description: "Hit a word goal and a time goal." },
-  none: { label: "Just showing up", description: "Any writing counts." },
-} as const;
-
-export type GoalType = keyof typeof GOAL_TYPES;
-
-export function isGoalType(value: unknown): value is GoalType {
-  return typeof value === "string" && Object.hasOwn(GOAL_TYPES, value);
-}
-
-/** Works out which goal type a saved set of goals corresponds to. */
-export function getGoalType(goals: PracticeGoals): GoalType {
-  const hasWordGoal = goals.dailyWordGoal !== null;
-  const hasMinuteGoal = goals.dailyMinuteGoal !== null;
-
-  if (hasWordGoal && hasMinuteGoal) return "both";
-  if (hasWordGoal) return "words";
-  if (hasMinuteGoal) return "time";
-  return "none";
-}
 
 /** Counts words the way a person would: groups of characters separated by spaces. */
 export function countWords(text: string): number {
@@ -38,39 +14,35 @@ export function countWords(text: string): number {
 }
 
 /**
- * Adds up a day's pieces of writing. Goals apply to the day's total,
- * however it's split between forms.
+ * True once a piece of writing meets its form's goal (every part of the
+ * goal that was set). With no goal set, any writing counts.
  */
-export function getDayTotals(
-  pieces: { wordCount: number; writingSeconds: number }[],
-): { wordCount: number; writingSeconds: number } {
-  let wordCount = 0;
-  let writingSeconds = 0;
-  for (const piece of pieces) {
-    wordCount += piece.wordCount;
-    writingSeconds += piece.writingSeconds;
-  }
-  return { wordCount, writingSeconds };
-}
-
-/**
- * True once the day's writing meets every goal the writer chose.
- * With no goals at all ("just showing up"), any writing counts.
- */
-export function isDayComplete(
-  goals: PracticeGoals,
+export function isGoalMet(
+  goal: FormGoal,
   wordCount: number,
   writingSeconds: number,
 ): boolean {
-  if (goals.dailyWordGoal === null && goals.dailyMinuteGoal === null) {
+  if (goal.dailyWordGoal === null && goal.dailyMinuteGoal === null) {
     return wordCount > 0;
   }
 
   const wordGoalMet =
-    goals.dailyWordGoal === null || wordCount >= goals.dailyWordGoal;
+    goal.dailyWordGoal === null || wordCount >= goal.dailyWordGoal;
   const minuteGoalMet =
-    goals.dailyMinuteGoal === null ||
-    writingSeconds >= goals.dailyMinuteGoal * 60;
+    goal.dailyMinuteGoal === null ||
+    writingSeconds >= goal.dailyMinuteGoal * 60;
 
   return wordGoalMet && minuteGoalMet;
+}
+
+/** A short description of a goal: "250 words", "15 min", "250 words and 15 min", or "any writing". */
+export function describeGoal(goal: FormGoal): string {
+  const parts: string[] = [];
+  if (goal.dailyWordGoal !== null) {
+    parts.push(`${goal.dailyWordGoal} words`);
+  }
+  if (goal.dailyMinuteGoal !== null) {
+    parts.push(`${goal.dailyMinuteGoal} min`);
+  }
+  return parts.length === 0 ? "any writing" : parts.join(" and ");
 }

@@ -25,8 +25,8 @@ export default async function SetupPage() {
         </h1>
         <p className="mt-2 text-ink-secondary">
           {hasCompletedSetup
-            ? "Change what you write and what counts as a day."
-            : "Two quick questions, then today’s prompt."}
+            ? "Change what you practice and the goal for each."
+            : "Pick what you practice and set a goal for each. Then today’s prompt."}
         </p>
 
         <SetupForm existingProfile={hasCompletedSetup ? profile : null} />

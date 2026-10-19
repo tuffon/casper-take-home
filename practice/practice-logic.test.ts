@@ -5,9 +5,9 @@ import {
   isCalendarDate,
   isValidTimezone,
 } from "./dates";
-import { countWords, getDayTotals, getGoalType, isDayComplete } from "./goals";
+import { countWords, describeGoal, isGoalMet } from "./goals";
 import { getCelebrationMessage } from "./celebration";
-import { calculateStreaks } from "./streak";
+import { calculateAllStreaks, calculateStreaks } from "./streak";
 import { WRITING_FORMS, getNextPrompt, getPromptForDay, isKnownPrompt } from "./writing-forms";
 
 describe("dates", () => {
@@ -40,35 +40,29 @@ describe("goals", () => {
     expect(countWords("one two\nthree\t four ")).toBe(4);
   });
 
-  it("requires every chosen goal to be met", () => {
+  it("requires every part of a form's goal to be met", () => {
     const both = { dailyWordGoal: 200, dailyMinuteGoal: 10 };
-    expect(isDayComplete(both, 250, 9 * 60)).toBe(false); // words done, time not
-    expect(isDayComplete(both, 150, 12 * 60)).toBe(false); // time done, words not
-    expect(isDayComplete(both, 200, 10 * 60)).toBe(true);
+    expect(isGoalMet(both, 250, 9 * 60)).toBe(false); // words done, time not
+    expect(isGoalMet(both, 150, 12 * 60)).toBe(false); // time done, words not
+    expect(isGoalMet(both, 200, 10 * 60)).toBe(true);
   });
 
-  it("checks only the goal the writer chose", () => {
-    expect(isDayComplete({ dailyWordGoal: 200, dailyMinuteGoal: null }, 200, 0)).toBe(true);
-    expect(isDayComplete({ dailyWordGoal: null, dailyMinuteGoal: 15 }, 3, 15 * 60)).toBe(true);
+  it("checks only the parts of the goal that were set", () => {
+    expect(isGoalMet({ dailyWordGoal: 250, dailyMinuteGoal: null }, 120, 0)).toBe(false);
+    expect(isGoalMet({ dailyWordGoal: 250, dailyMinuteGoal: null }, 250, 0)).toBe(true);
+    expect(isGoalMet({ dailyWordGoal: null, dailyMinuteGoal: 15 }, 3, 15 * 60)).toBe(true);
   });
 
-  it("counts any writing when there are no goals", () => {
-    const noGoals = { dailyWordGoal: null, dailyMinuteGoal: null };
-    expect(isDayComplete(noGoals, 1, 0)).toBe(true);
-    expect(isDayComplete(noGoals, 0, 600)).toBe(false);
+  it("counts any writing when no goal is set", () => {
+    const noGoal = { dailyWordGoal: null, dailyMinuteGoal: null };
+    expect(isGoalMet(noGoal, 1, 0)).toBe(true);
+    expect(isGoalMet(noGoal, 0, 600)).toBe(false);
   });
 
-  it("adds up every piece written in a day", () => {
-    const lyrics = { wordCount: 12, writingSeconds: 40 };
-    const essay = { wordCount: 10, writingSeconds: 30 };
-    expect(getDayTotals([lyrics, essay])).toEqual({ wordCount: 22, writingSeconds: 70 });
-    expect(getDayTotals([])).toEqual({ wordCount: 0, writingSeconds: 0 });
-  });
-
-  it("maps saved goals back to the setup answer", () => {
-    expect(getGoalType({ dailyWordGoal: 200, dailyMinuteGoal: 10 })).toBe("both");
-    expect(getGoalType({ dailyWordGoal: null, dailyMinuteGoal: 10 })).toBe("time");
-    expect(getGoalType({ dailyWordGoal: null, dailyMinuteGoal: null })).toBe("none");
+  it("describes goals in plain words", () => {
+    expect(describeGoal({ dailyWordGoal: 250, dailyMinuteGoal: null })).toBe("250 words");
+    expect(describeGoal({ dailyWordGoal: 250, dailyMinuteGoal: 15 })).toBe("250 words and 15 min");
+    expect(describeGoal({ dailyWordGoal: null, dailyMinuteGoal: null })).toBe("any writing");
   });
 });
 
@@ -88,6 +82,19 @@ describe("streaks", () => {
   it("resets after a missed day but remembers the longest run", () => {
     const days = ["2026-10-10", "2026-10-11", "2026-10-12", "2026-10-13", "2026-10-17"];
     expect(calculateStreaks(days, today)).toEqual({ current: 0, longest: 4 });
+  });
+
+  it("keeps a streak per form and an overall streak for any form", () => {
+    const completions = [
+      { writingForm: "lyrics" as const, completedOn: "2026-10-17" },
+      { writingForm: "lyrics" as const, completedOn: "2026-10-18" },
+      { writingForm: "story" as const, completedOn: "2026-10-19" },
+    ];
+    const streaks = calculateAllStreaks(completions, today);
+    expect(streaks.byForm.lyrics.current).toBe(2); // still alive until today ends
+    expect(streaks.byForm.story.current).toBe(1);
+    expect(streaks.byForm.essay.current).toBe(0);
+    expect(streaks.overall.current).toBe(3); // some goal was met on each of the 3 days
   });
 
   it("handles no history and unsorted input", () => {

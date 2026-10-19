@@ -168,8 +168,17 @@ body {
     @apply text-[21px] font-semibold tracking-[-0.01em];
   }
 
-  .choice {
-    @apply flex cursor-pointer items-start gap-3 rounded-field border border-hairline bg-white p-4 transition has-checked:border-action has-checked:ring-2 has-checked:ring-action/20;
+  .choice-card {
+    @apply rounded-field border border-hairline bg-white p-4 transition has-checked:border-action has-checked:ring-2 has-checked:ring-action/20;
+  }
+
+  .goal-input {
+    @apply w-24 rounded-[10px] border border-hairline bg-white px-3 py-1.5 outline-none focus:border-focus focus:ring-4 focus:ring-focus/20;
+  }
+
+  /* A small pill showing one writing form's streak (History page). */
+  .streak-chip {
+    @apply rounded-full border border-black/8 bg-white px-3 py-1 text-sm;
   }
 
   /* The big writing box on the Today page. */
