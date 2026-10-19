@@ -4,7 +4,7 @@ Engineering take-home project. The product idea is still being chosen; this
 first milestone is the foundation: email + password accounts, a protected
 page, and a live deployment.
 
-**Live app:** _added after the first deploy_
+**Live app:** https://casper-take-home-rho.vercel.app
 
 ## Stack
 
