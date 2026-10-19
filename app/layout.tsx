@@ -4,12 +4,12 @@ import { TimezoneCookie } from "@/practice/timezone-cookie";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  // Pages set their own title, e.g. "Sign in" becomes "Sign in · Casper Take-Home".
+  // Pages set their own title, e.g. "Sign in" becomes "Sign in · Writers Block".
   title: {
-    default: "Casper Take-Home",
-    template: "%s · Casper Take-Home",
+    default: "Writers Block",
+    template: "%s · Writers Block",
   },
-  description: "Engineering take-home project.",
+  description: "Casper take-home project.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -20,8 +20,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* A translucent bar that blurs the page scrolling underneath it. */}
         <header className="sticky top-0 z-10 border-b border-black/8 bg-white/80 backdrop-blur-xl">
           <div className="mx-auto flex h-13 max-w-5xl items-center px-6">
-            <Link href="/" className="text-[17px] font-semibold">
-              Casper Take-Home
+            <Link href="/" className="wordmark">
+              Writers Block
+              <span className="caret" aria-hidden="true" />
             </Link>
           </div>
         </header>

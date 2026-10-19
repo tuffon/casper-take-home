@@ -47,12 +47,12 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
       <div className="mt-10 flex flex-wrap items-end justify-between gap-6">
         <div>
           <p className="text-ink-secondary">{formatLongDate(today)}</p>
-          <h1 className="text-[40px] leading-tight font-semibold tracking-[-0.015em]">
+          <h1 className="display-title">
             Today’s writing
           </h1>
         </div>
         <div className="text-right">
-          <p className="text-[28px] leading-tight font-semibold">
+          <p className="text-[28px] leading-tight font-semibold text-spark">
             {streak.current} {streak.current === 1 ? "day" : "days"}
           </p>
           <p className="text-sm text-ink-secondary">

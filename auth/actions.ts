@@ -9,6 +9,7 @@
 
 import { redirect } from "next/navigation";
 import { getSignUpValidationError } from "@/auth/validation";
+import { getWriterProfile } from "@/practice/writer-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // What a form shows after a submission that didn't redirect.
@@ -61,14 +62,16 @@ export async function signIn(
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return { email, errorMessage: describeAuthError(error.code, error.message) };
   }
 
-  // /today sends anyone who hasn't finished setup to /setup.
-  redirect("/today");
+  // Writers who skipped the setup questions (or never saw them) get them
+  // again at every sign-in. Everyone else goes straight to today's prompt.
+  const profile = await getWriterProfile(data.user.id);
+  redirect(profile?.completedSetup ? "/today" : "/setup");
 }
 
 export async function signOut() {

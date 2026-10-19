@@ -59,11 +59,39 @@ export async function saveWriterProfile(
     usual_writing_form: usualWritingForm,
     daily_word_goal: dailyWordGoal,
     daily_minute_goal: dailyMinuteGoal,
+    completed_setup: true,
     updated_at: new Date().toISOString(),
   });
 
   if (error) {
     return { errorMessage: "Couldn’t save your answers. Please try again." };
+  }
+
+  redirect("/today");
+}
+
+/**
+ * "Skip for now": takes the writer straight to today's prompt. They get a
+ * profile with no goals (any writing counts) and are asked the setup
+ * questions again the next time they sign in. An existing profile is kept.
+ */
+export async function skipSetup() {
+  const user = await requireSignedInUser();
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("writer_profiles").upsert(
+    {
+      user_id: user.id,
+      usual_writing_form: "freewrite",
+      daily_word_goal: null,
+      daily_minute_goal: null,
+      completed_setup: false,
+    },
+    { onConflict: "user_id", ignoreDuplicates: true }, // never overwrite real answers
+  );
+
+  if (error) {
+    throw new Error(`Could not skip setup: ${error.message}`);
   }
 
   redirect("/today");

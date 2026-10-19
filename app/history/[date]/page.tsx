@@ -34,7 +34,7 @@ export default async function EntryPage({ params }: PageProps<"/history/[date]">
         ‹ All entries
       </Link>
 
-      <h1 className="mt-2 text-[40px] leading-tight font-semibold tracking-[-0.015em]">
+      <h1 className="display-title mt-2">
         {formatLongDate(entry.entryDate)}
       </h1>
       <p className="mt-2 text-ink-secondary">

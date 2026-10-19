@@ -1,4 +1,6 @@
-# Casper Take-Home
+# Writers Block
+
+_Casper take-home project._
 
 A daily writing practice app. Every day you get a prompt for the kind of
 writing you do (freewriting, lyrics, poetry, essays, stories), write toward

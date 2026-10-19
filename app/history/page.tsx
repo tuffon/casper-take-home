@@ -23,12 +23,10 @@ export default async function HistoryPage() {
     <div className="w-full max-w-2xl">
       <AppNav currentPage="history" />
 
-      <h1 className="mt-10 text-[40px] leading-tight font-semibold tracking-[-0.015em]">
-        History
-      </h1>
+      <h1 className="display-title mt-10">History</h1>
 
       <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Current streak" value={streak.current} />
+        <Stat label="Current streak" value={streak.current} highlight />
         <Stat label="Longest streak" value={streak.longest} />
         <Stat label="Days written" value={entries.length} />
         <Stat label="Total words" value={totalWords.toLocaleString("en-US")} />
@@ -71,11 +69,19 @@ export default async function HistoryPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number | string }) {
+type StatProps = {
+  label: string;
+  value: number | string;
+  highlight?: boolean; // show the number in the accent color
+};
+
+function Stat({ label, value, highlight = false }: StatProps) {
   return (
     <div className="rounded-card border border-black/8 bg-white p-4">
       <dt className="text-sm text-ink-secondary">{label}</dt>
-      <dd className="mt-1 text-[28px] leading-tight font-semibold">{value}</dd>
+      <dd className={`mt-1 text-[28px] leading-tight font-semibold ${highlight ? "text-spark" : ""}`}>
+        {value}
+      </dd>
     </div>
   );
 }
