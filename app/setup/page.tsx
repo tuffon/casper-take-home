@@ -17,7 +17,7 @@ export default async function SetupPage() {
   return (
     <div className="w-full max-w-xl">
       {/* Today needs a profile (answered or skipped), so only link there once one exists. */}
-      {profile && <AppNav currentPage="account" />}
+      {profile && <AppNav currentPage="account" userEmail={user.email} />}
 
       <div className="card mt-8 max-w-xl">
         <h1 className="page-title">

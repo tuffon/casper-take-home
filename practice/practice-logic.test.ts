@@ -6,6 +6,7 @@ import {
   isValidTimezone,
 } from "./dates";
 import { countWords, getGoalType, isDayComplete } from "./goals";
+import { getCelebrationMessage } from "./celebration";
 import { calculateStreaks } from "./streak";
 import { WRITING_FORMS, getPromptForDay, isKnownPrompt } from "./writing-forms";
 
@@ -110,5 +111,18 @@ describe("prompts", () => {
   it("recognises only the form's own prompts", () => {
     expect(isKnownPrompt("story", WRITING_FORMS.story.prompts[0])).toBe(true);
     expect(isKnownPrompt("story", WRITING_FORMS.lyrics.prompts[0])).toBe(false);
+  });
+});
+
+describe("celebration messages", () => {
+  it("has a special message for milestone days", () => {
+    expect(getCelebrationMessage(7)).toBe("A full week. That’s real momentum.");
+    expect(getCelebrationMessage(30)).toContain("Thirty days");
+  });
+
+  it("rotates through everyday messages on other days", () => {
+    // Divided by 4, these leave remainders 0, 1, 2 and 3: one of each message.
+    const messages = new Set([4, 5, 6, 11].map(getCelebrationMessage));
+    expect(messages.size).toBe(4);
   });
 });

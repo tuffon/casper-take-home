@@ -51,9 +51,46 @@ body {
   }
 }
 
+/* The "day complete" pop-up: the card pops in, the check mark draws itself. */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+}
+
+@keyframes draw-stroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.celebration-dialog::backdrop {
+  background-color: rgb(0 0 0 / 0.25);
+  backdrop-filter: blur(6px);
+}
+
+.check-mark circle {
+  stroke: var(--color-spark);
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: draw-stroke 600ms ease-out 150ms forwards;
+}
+
+.check-mark path {
+  stroke: var(--color-spark);
+  stroke-dasharray: 36;
+  stroke-dashoffset: 36;
+  animation: draw-stroke 350ms ease-out 650ms forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .caret {
+  .caret,
+  .celebration-card,
+  .check-mark circle,
+  .check-mark path {
     animation: none !important;
+    stroke-dashoffset: 0;
   }
 }
 
@@ -99,12 +136,27 @@ body {
     @apply inline-flex items-center justify-center rounded-full border border-hairline bg-white px-[22px] py-[11px] text-action transition-colors hover:bg-parchment focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50;
   }
 
+  /* Round account button with the writer's initial, top-right of signed-in pages. */
+  .account-button {
+    @apply flex size-9 items-center justify-center rounded-full bg-black/6 text-sm font-semibold transition-colors hover:bg-black/10 aria-[current=page]:bg-ink aria-[current=page]:text-white;
+  }
+
   .text-link {
     @apply text-action hover:underline;
   }
 
   .message-error {
     @apply rounded-field bg-[#fff2f4] px-4 py-3 text-sm text-danger;
+  }
+
+  /* A transparent shell; the visible card is .celebration-card inside it. */
+  .celebration-dialog {
+    @apply m-auto max-h-none max-w-none overflow-visible bg-transparent p-0;
+  }
+
+  .celebration-card {
+    @apply relative w-[min(92vw,26rem)] rounded-card bg-white p-8 text-center text-ink shadow-2xl;
+    animation: pop-in 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
   }
 
   .message-notice {

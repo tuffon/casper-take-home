@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { saveTodaysEntry, type SaveEntryState } from "@/practice/actions";
+import { saveTodaysEntry, type CompletedDay, type SaveEntryState } from "@/practice/actions";
+import { CelebrationDialog } from "@/practice/celebration-dialog";
 import { countWords, isDayComplete, type PracticeGoals } from "@/practice/goals";
 import type { WritingForm } from "@/practice/writing-forms";
 
@@ -27,6 +28,7 @@ export function WritingEditor({
   const [body, setBody] = useState(savedBody);
   const [lastSavedBody, setLastSavedBody] = useState(savedBody);
   const { activeSeconds, recordTyping } = useActiveWritingTime(savedWritingSeconds);
+  const [completedDay, setCompletedDay] = useState<CompletedDay | null>(null);
 
   // Calls the Server Action, and remembers what was saved so we can tell
   // when there are unsaved changes.
@@ -35,6 +37,7 @@ export function WritingEditor({
       const result = await saveTodaysEntry(previousState, formData);
       if (result.status === "saved") {
         setLastSavedBody(String(formData.get("body")));
+        setCompletedDay(result.completedDay); // non-null only when this save finished the day
       }
       return result;
     },
@@ -85,7 +88,11 @@ export function WritingEditor({
       </div>
 
       <p className="mt-4 text-sm" aria-live="polite">
-        {dayComplete ? (
+        {dayComplete && hasUnsavedChanges ? (
+          <span className="font-semibold text-success">
+            Goal reached. Save to finish the day.
+          </span>
+        ) : dayComplete ? (
           <span className="font-semibold text-success">
             Today’s practice is complete.
           </span>
@@ -106,6 +113,10 @@ export function WritingEditor({
           hasUnsavedChanges={hasUnsavedChanges}
         />
       </div>
+
+      {completedDay && (
+        <CelebrationDialog completedDay={completedDay} onClose={() => setCompletedDay(null)} />
+      )}
     </form>
   );
 }

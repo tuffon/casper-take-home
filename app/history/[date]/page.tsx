@@ -28,7 +28,7 @@ export default async function EntryPage({ params }: PageProps<"/history/[date]">
 
   return (
     <div className="w-full max-w-2xl">
-      <AppNav currentPage="history" />
+      <AppNav currentPage="history" userEmail={user.email} />
 
       <Link href="/history" className="text-link mt-8 inline-block text-sm">
         ‹ All entries

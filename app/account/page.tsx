@@ -13,7 +13,7 @@ export default async function AccountPage() {
 
   return (
     <div className="w-full max-w-md">
-      <AppNav currentPage="account" />
+      <AppNav currentPage="account" userEmail={user.email} />
 
       <div className="card mt-8">
         <h1 className="page-title">Your account</h1>

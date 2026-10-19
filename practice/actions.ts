@@ -7,7 +7,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSignedInUser } from "@/auth/current-user";
+import { getEntryForDate, listCompletedDates } from "@/practice/entries";
 import { countWords, isDayComplete, isGoalType } from "@/practice/goals";
+import { calculateStreaks } from "@/practice/streak";
 import { getWritersToday } from "@/practice/today";
 import { getWriterProfile } from "@/practice/writer-profile";
 import { isKnownPrompt, isWritingForm } from "@/practice/writing-forms";
@@ -99,9 +101,18 @@ export async function skipSetup() {
 
 // ---------- Today's entry ----------
 
+// Details for the "day complete" pop-up. Only sent with the save that
+// finishes the day, never with later saves.
+export type CompletedDay = {
+  currentStreak: number;
+  isPersonalBest: boolean;
+  wordCount: number;
+  minutesWritten: number;
+};
+
 export type SaveEntryState =
   | { status: "idle" }
-  | { status: "saved"; savedAt: string }
+  | { status: "saved"; savedAt: string; completedDay: CompletedDay | null }
   | { status: "error"; message: string };
 
 const MAXIMUM_BODY_LENGTH = 50000; // matches the database check
@@ -140,19 +151,23 @@ export async function saveTodaysEntry(
     MAXIMUM_WRITING_SECONDS,
   );
   const wordCount = countWords(body);
+  const goalMet = isDayComplete(profile, wordCount, writingSeconds);
+
+  const today = await getWritersToday(); // decided by the server, not the browser
+  const entryBeforeSave = await getEntryForDate(user.id, today);
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("entries").upsert(
     {
       user_id: user.id,
-      entry_date: await getWritersToday(), // decided by the server, not the browser
+      entry_date: today,
       writing_form: writingForm,
       prompt,
       body,
       word_count: wordCount,
       writing_seconds: writingSeconds,
       // Stored with the entry so that changing goals later doesn't rewrite past days.
-      goal_met: isDayComplete(profile, wordCount, writingSeconds),
+      goal_met: goalMet,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id,entry_date" }, // one entry per writer per day
@@ -164,7 +179,25 @@ export async function saveTodaysEntry(
 
   // Re-render the page so the streak reflects this save.
   revalidatePath("/today");
-  return { status: "saved", savedAt: new Date().toISOString() };
+  const savedAt = new Date().toISOString();
+
+  // Celebrate only the save that finishes the day, not every save after it.
+  const finishedTheDayNow = goalMet && !entryBeforeSave?.goalMet;
+  if (!finishedTheDayNow) {
+    return { status: "saved", savedAt, completedDay: null };
+  }
+
+  const streak = calculateStreaks(await listCompletedDates(user.id), today);
+  return {
+    status: "saved",
+    savedAt,
+    completedDay: {
+      currentStreak: streak.current,
+      isPersonalBest: streak.current > 1 && streak.current === streak.longest,
+      wordCount,
+      minutesWritten: Math.floor(writingSeconds / 60),
+    },
+  };
 }
 
 // ---------- Helpers ----------

@@ -21,7 +21,7 @@ export default async function HistoryPage() {
 
   return (
     <div className="w-full max-w-2xl">
-      <AppNav currentPage="history" />
+      <AppNav currentPage="history" userEmail={user.email} />
 
       <h1 className="display-title mt-10">History</h1>
 

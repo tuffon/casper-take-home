@@ -42,7 +42,7 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
 
   return (
     <div className="w-full max-w-2xl">
-      <AppNav currentPage="today" />
+      <AppNav currentPage="today" userEmail={user.email} />
 
       <div className="mt-10 flex flex-wrap items-end justify-between gap-6">
         <div>
